@@ -40,7 +40,7 @@
         </div>
 
         <!-- Withdraw Section -->
-        <div class="flex-1 mr-4 bg-white p-4 rounded shadow">
+        <div class="flex-1 bg-white p-4 rounded shadow">
             <h2 class="text-xl font-bold mb-2">Withdraw</h2>
             <label for="withdrawAmount" class="block mb-2">Withdraw Amount:</label>
             <input type="number" id="withdrawAmount" class="border p-2 mb-2">
@@ -48,9 +48,10 @@
         </div>
 
         <!-- Owner Actions Section -->
-        <div class="flex-1 bg-white p-4 rounded shadow">
+        <div id="ownerdiv" class="flex-1 ml-4 bg-white p-4 rounded shadow">
             <h2 class="text-xl font-bold mb-2">Owner Actions</h2>
-            <button onclick="withdrawContractBalance()" class="bg-yellow-500 text-white px-4 py-2 rounded">Withdraw Contract Balance (Owner only)</button>
+            <button id="withdrawContractBalanceBtn" onclick="withdrawContractBalance()" class="bg-yellow-500 text-white px-4 py-2 rounded" style="display: none;">Withdraw Contract Balance (Owner only)</button>
+
         </div>
     </div>
 
@@ -214,20 +215,32 @@
         const refundContract = new web3.eth.Contract(contractABI, contractAddress);
 
 
-        // Function to check if the current account is the owner
-        async function isOwner() {
-            const accounts = await web3.eth.requestAccounts();
-            const owner = await refundContract.methods.owner().call();
-            return owner.toLowerCase() === accounts[0].toLowerCase();
-        }
+// Function to check if the current account is the owner
+async function isOwner() {
+    try {
+        const accounts = await web3.eth.requestAccounts();
+        const owner = await refundContract.methods.owner().call();
+        return owner.toLowerCase() === accounts[0].toLowerCase();
+    } catch (error) {
+        console.error('Error checking ownership:', error);
+        return false;
+    }
+}
 
 // Function to update the visibility of owner-specific buttons
+// Function to update the visibility of owner-specific buttons
 async function updateOwnerActionsVisibility() {
-    const withdrawContractBalanceBtn = document.getElementById('withdrawContractBalanceBtn');
-    const isOwnerAccount = await isOwner();
+    try {
+        const withdrawContractBalanceBtn = document.getElementById('withdrawContractBalanceBtn');
+        const isOwnerAccount = await isOwner();
 
-    // Show or hide the button based on ownership
-    withdrawContractBalanceBtn.style.display = isOwnerAccount ? 'block' : 'none';
+        // Show or hide the button based on ownership
+        withdrawContractBalanceBtn.style.display = isOwnerAccount ? 'block' : 'none';
+        ownerdiv.style.display = isOwnerAccount ? 'block' : 'none';
+        console.log(`Current account is owner: ${isOwnerAccount}`);
+    } catch (error) {
+        console.error('Error updating owner actions visibility:', error);
+    }
 }
 
 // Function to display the connected wallet address
