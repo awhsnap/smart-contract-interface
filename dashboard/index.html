@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refund Contract Interface</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.3.6/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/timeago.js@4.0.2/dist/timeago.min.js"></script>
+ <style>
+  #recentDeposits, #recentWithdrawals {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 0px solid #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+ </style>
+</head>
+<body>
+  <body class="bg-gray-100 font-sans p-4">
+
+    <h1 class="text-3xl font-bold mb-4">Refund Contract Interface</h1>
+
+    <!-- Flex container for Deposit, Withdraw, and Owner Actions -->
+    <div class="flex mb-4">
+
+        <!-- Deposit Section -->
+        <div class="flex-1 mr-4 bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-bold mb-2">Deposit</h2>
+            <label for="depositAmount" class="block mb-2">Deposit Amount:</label>
+            <input type="number" id="depositAmount" class="border p-2 mb-2">
+            <button onclick="deposit()" class="bg-blue-500 text-white px-4 py-2 rounded">Deposit</button>
+        </div>
+
+        <!-- Withdraw Section -->
+        <div class="flex-1 mr-4 bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-bold mb-2">Withdraw</h2>
+            <label for="withdrawAmount" class="block mb-2">Withdraw Amount:</label>
+            <input type="number" id="withdrawAmount" class="border p-2 mb-2">
+            <button onclick="withdraw()" class="bg-red-500 text-white px-4 py-2 rounded">Withdraw</button>
+        </div>
+
+        <!-- Owner Actions Section -->
+        <div class="flex-1 bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-bold mb-2">Owner Actions</h2>
+            <button onclick="withdrawContractBalance()" class="bg-yellow-500 text-white px-4 py-2 rounded">Withdraw Contract Balance (Owner only)</button>
+        </div>
+    </div>
+
+<!-- Recent Transactions Section -->
+<div class="bg-white p-4 mb-4 rounded shadow">
+  <h2 class="text-xl font-bold mb-2">Recent Transactions</h2>
+  <div class="flex">
+      <!-- Deposit Column -->
+      <div class="flex-1 mr-4">
+          <h3 class="text-lg font-bold mb-2">Deposits</h3>
+          <ul id="recentDeposits" class="list-disc pl-4 scrollable-container"></ul>
+      </div>
+
+      <!-- Withdrawal Column -->
+      <div class="flex-1">
+          <h3 class="text-lg font-bold mb-2">Withdrawals</h3>
+          <ul id="recentWithdrawals" class="list-disc pl-4 scrollable-container"></ul>
+      </div>
+  </div>
+</div>
+    <!-- Contract Balance -->
+    <div class="bg-white p-4 mb-4 rounded shadow">
+        <h2 class="text-xl font-bold mb-2">Contract Balance</h2>
+        <p id="contractBalance" class="text-gray-800">Contract Balance: Loading...</p>
+    </div>
+
+    <!-- Events -->
+    <div class="bg-white p-4 mb-4 rounded shadow">
+        <h2 class="text-xl font-bold mb-2">Events</h2>
+        <ul id="eventList" class="list-disc pl-4"></ul>
+    </div>
+
+    <!-- List of Transactions -->
+    <div class="bg-white p-4 mb-4 rounded shadow">
+        <h2 class="text-xl font-bold mb-2">List of Transactions</h2>
+        <ul id="transactionList" class="list-disc pl-4"></ul>
+    </div>
+    <script>
+        // Check if MetaMask is installed
+        if (typeof window.ethereum !== 'undefined') {
+            window.web3 = new Web3(window.ethereum);
+            window.ethereum.enable();
+        } else if (typeof window.web3 !== 'undefined') {
+            window.web3 = new Web3(window.web3.currentProvider);
+        } else {
+            alert('Please install MetaMask to use this interface.');
+        }
+
+        // Connect to the injected Web3 provider (MetaMask)
+        const web3 = new Web3(window.ethereum);
+
+        // Replace YOUR_CONTRACT_ADDRESS and YOUR_CONTRACT_ABI with the actual values
+        const contractAddress = '0x998a53eB0E6c4cE3a0bEEb1e5DDe90F03327FA9A';
+        const contractABI = [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Deposit",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Withdrawal",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "balances",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "deposit",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "withdrawContractBalance",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  
+  
+        ];
+
+        const refundContract = new web3.eth.Contract(contractABI, contractAddress);
+
+        // Example function to deposit funds
+        async function deposit() {
+            const depositAmount = document.getElementById('depositAmount').value;
+
+            try {
+                const accounts = await web3.eth.requestAccounts();
+                
+                await refundContract.methods.deposit().send({
+                    from: accounts[0],
+                    value: web3.utils.toWei(depositAmount, 'ether'),
+                });
+
+                alert('Deposit successful!');
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Example function to withdraw funds
+        async function withdraw() {
+            const withdrawAmount = document.getElementById('withdrawAmount').value;
+
+            try {
+                const accounts = await web3.eth.requestAccounts();
+                
+                await refundContract.methods.withdraw(web3.utils.toWei(withdrawAmount, 'ether')).send({
+                    from: accounts[0],
+                });
+                displayRecentTransactions();
+                alert('Withdrawal successful!');
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+    async function displayContractBalance() {
+      const contractBalance = await web3.eth.getBalance(contractAddress);
+      const formattedBalance = web3.utils.fromWei(contractBalance, 'ether');
+
+      const balanceElement = document.getElementById('contractBalance');
+      balanceElement.textContent = `Contract Balance: ${formattedBalance} ETH`;
+    }
+
+
+
+// Function to fetch recent transactions for a specific address
+async function getRecentTransactions(address) {
+    const depositEvents = await refundContract.getPastEvents('Deposit', {
+        filter: { sender: address },
+        fromBlock: 0,
+        toBlock: 'latest',
+    });
+
+    const withdrawEvents = await refundContract.getPastEvents('Withdrawal', {
+        filter: { recipient: address },
+        fromBlock: 0,
+        toBlock: 'latest',
+    });
+
+    console.log('Deposit Events:', depositEvents);
+    console.log('Withdraw Events:', withdrawEvents);
+
+    return [...depositEvents, ...withdrawEvents];
+}
+
+async function displayRecentTransactions() {
+    const accounts = await web3.eth.requestAccounts();
+    const address = accounts[0];
+
+    const recentDepositsList = document.getElementById('recentDeposits');
+    const recentWithdrawalsList = document.getElementById('recentWithdrawals');
+    recentDepositsList.innerHTML = '';
+    recentWithdrawalsList.innerHTML = '';
+
+    const recentTransactions = await getRecentTransactions(address);
+
+    // Sort transactions based on block number in descending order
+    recentTransactions.sort((a, b) => b.blockNumber - a.blockNumber);
+
+    for (const event of recentTransactions) {
+        const listItem = document.createElement('li');
+        const amount = event.returnValues.amount ? web3.utils.fromWei(event.returnValues.amount, 'ether') : 'N/A';
+
+        // Use getBlock to fetch block details
+        const block = await web3.eth.getBlock(event.blockNumber);
+
+        const timestamp = block ? convertUnixTimestamp(block.timestamp) : 'N/A';
+
+        listItem.textContent = `${event.event}: ${amount} ETH - Timestamp: ${timestamp}`;
+        if (event.event === 'Deposit') {
+            recentDepositsList.appendChild(listItem);
+        } else if (event.event === 'Withdrawal') {
+            recentWithdrawalsList.appendChild(listItem);
+        }
+    }
+}
+
+
+// Function to convert Unix timestamp to human-readable format
+function convertUnixTimestamp(unixTimestamp) {
+    const date = new Date(unixTimestamp * 1000);
+    const options = { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+    return new Intl.DateTimeFormat('default', options).format(date);
+}
+
+
+// Function to convert Unix timestamp to human-readable format
+function convertUnixTimestamp(unixTimestamp) {
+    const date = new Date(unixTimestamp * 1000);
+    const options = { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+    return new Intl.DateTimeFormat('default', options).format(date);
+}
+
+
+
+
+
+        // Function to fetch and display events
+async function displayEvents() {
+    // Fetch past events
+    const events = await contractInstance.getPastEvents('allEvents', { fromBlock: 0, toBlock: 'latest' });
+
+    // Display events in the HTML
+    const eventList = document.getElementById('eventList');
+
+    events.forEach(event => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `Event: ${event.event}, Block Number: ${event.blockNumber}, Transaction Hash: ${event.transactionHash}`;
+        eventList.appendChild(listItem);
+    });
+}
+
+
+
+
+
+
+
+      // Example function to withdraw contract balance (owner only)
+      async function withdrawContractBalance() {
+          try {
+              const accounts = await web3.eth.requestAccounts();
+              
+              await refundContract.methods.withdrawContractBalance().send({
+                  from: accounts[0],
+              });
+              alert('Contract balance withdrawn by owner!');
+          } catch (error) {
+              alert('Error: ' + error.message);
+          }
+      }
+    // Function to display list of transactions
+    async function displayTransactions() {
+      const blockNumber = await web3.eth.getBlockNumber();
+      const transactions = [];
+
+    for (let i = 0; i < blockNumber; i++) {
+        const block = await web3.eth.getBlock(i, true); // Retrieve the block with transactions
+
+        if (block && block.transactions.length > 0) {
+            transactions.push(...block.transactions);
+        }
+    }
+
+    // Display transactions in the HTML
+    const transactionList = document.getElementById('transactionList');
+
+    transactions.forEach(transaction => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `Transaction Hash: ${transaction.hash}, Block Number: ${transaction.blockNumber}`;
+        transactionList.appendChild(listItem);
+    });
+}
+
+
+ // Connect to Ethereum provider (MetaMask)
+window.ethereum.request({ method: 'eth_requestAccounts' })
+    .then(() => {
+        console.log('Connected to MetaMask');
+        displayEvents(); // Fetch and display events once connected
+        displayContractBalance(); // Fetch and display contract balance once connected
+        displayRecentTransactions();
+        displayTransactions(); // Fetch and display transactions once connected
+    })
+    .catch(error => {
+        console.error('Error connecting to MetaMask:', error);
+    });
+    </script>
+</body>
+</html>
